@@ -287,9 +287,9 @@ cdef class ClassificationCriterion(Criterion):
         self.sum_right = <double*> calloc(n_elements, sizeof(double))
         
         ##为各个类的cost分配内存，只适用二分类问题
-        self.cost_total = <float32*> calloc(n_elements, sizeof(float32))
-        self.cost_left = <float32*> calloc(n_elements, sizeof(float32))
-        self.cost_right = <float32*> calloc(n_elements, sizeof(float32))
+        self.cost_total = <DTYPE_t*> calloc(n_elements, sizeof(DTYPE_t))
+        self.cost_left = <DTYPE_t*> calloc(n_elements, sizeof(DTYPE_t))
+        self.cost_right = <DTYPE_t*> calloc(n_elements, sizeof(DTYPE_t))
 
         if (self.sum_total == NULL or
                 self.sum_left == NULL or
@@ -369,7 +369,7 @@ cdef class ClassificationCriterion(Criterion):
             例如sum_total[1*sum_stride+2]存储的是第二个输出的第3类样本的权重之和。
             """
             ##使cost_total中的值初始化为0
-            memset(cost_total + offset, 0, n_classes[k] * sizeof(float32)) 
+            memset(cost_total + offset, 0, n_classes[k] * sizeof(DTYPE_t)) 
             offset += self.sum_stride
 
         for p in range(start, end):
@@ -419,8 +419,8 @@ cdef class ClassificationCriterion(Criterion):
             memset(sum_left, 0, n_classes[k] * sizeof(double))
             memcpy(sum_right, sum_total, n_classes[k] * sizeof(double))
             ##just apply for binary cf
-            memset(cost_left, 0, n_classes[k] * sizeof(float32))
-            memcpy(cost_right, cost_total, n_classes[k] * sizeof(float32))
+            memset(cost_left, 0, n_classes[k] * sizeof(DTYPE_t))
+            memcpy(cost_right, cost_total, n_classes[k] * sizeof(DTYPE_t))
 
             sum_total += self.sum_stride                ##这里的作用是什么？——首地址移位
             sum_left += self.sum_stride
@@ -453,8 +453,8 @@ cdef class ClassificationCriterion(Criterion):
             memset(sum_right, 0, n_classes[k] * sizeof(double))
             memcpy(sum_left, sum_total, n_classes[k] * sizeof(double))
             ##just apply for binary cf
-            memset(cost_right, 0, n_classes[k] * sizeof(float32))
-            memcpy(cost_left, cost_total, n_classes[k] * sizeof(float32))
+            memset(cost_right, 0, n_classes[k] * sizeof(DTYPE_t))
+            memcpy(cost_left, cost_total, n_classes[k] * sizeof(DTYPE_t))
             
             sum_total += self.sum_stride
             sum_left += self.sum_stride
