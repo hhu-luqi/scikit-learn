@@ -212,7 +212,7 @@ cdef class Splitter:
         self.start = start
         self.end = end
 
-        self.criterion.init(self.lim_amount               ##修改
+        self.criterion.init(self.lim_amount,               ##修改
                             self.y,
                             self.y_stride,
                             self.sample_weight,
