@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Authors: Gilles Louppe <g.louppe@gmail.com>
 #          Peter Prettenhofer <peter.prettenhofer@gmail.com>
 #          Brian Holt <bdholt1@gmail.com>
@@ -63,6 +64,8 @@ cdef class Splitter:
     cdef DOUBLE_t* y
     cdef SIZE_t y_stride
     cdef DOUBLE_t* sample_weight
+    
+    cdef DTYPE_t* lim_amount             #存储特征LIMIT_BAL用以计算misclassification cost
 
     # The samples vector `samples` is maintained by the Splitter object such
     # that the samples contained in a node are contiguous. With this setting,
@@ -94,5 +97,7 @@ cdef class Splitter:
                         SIZE_t* n_constant_features) nogil except -1
 
     cdef void node_value(self, double* dest) nogil
+    cdef void node_cost(self, double* dest0) nogil             ##新增方法node_cost()
 
     cdef double node_impurity(self) nogil
+

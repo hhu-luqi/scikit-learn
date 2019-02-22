@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Authors: Gilles Louppe <g.louppe@gmail.com>
 #          Peter Prettenhofer <peter.prettenhofer@gmail.com>
 #          Brian Holt <bdholt1@gmail.com>
@@ -53,7 +54,7 @@ cdef class Criterion:
     # statistics correspond to samples[start:pos] and samples[pos:end].
 
     # Methods
-    cdef int init(self, DOUBLE_t* y, SIZE_t y_stride, DOUBLE_t* sample_weight,
+    cdef int init(self, DTYPE_t* lim_amount, DOUBLE_t* y, SIZE_t y_stride, DOUBLE_t* sample_weight,
                   double weighted_n_samples, SIZE_t* samples, SIZE_t start,
                   SIZE_t end) nogil except -1
     cdef int reset(self) nogil except -1
@@ -63,15 +64,20 @@ cdef class Criterion:
     cdef void children_impurity(self, double* impurity_left,
                                 double* impurity_right) nogil
     cdef void node_value(self, double* dest) nogil
+    ##added
+    cdef void node_cost(self, double* dest0) nogil
     cdef double impurity_improvement(self, double impurity) nogil
     cdef double proxy_impurity_improvement(self) nogil
 
 cdef class ClassificationCriterion(Criterion):
     """Abstract criterion for classification."""
-
+    cdef DTYPE_t* lim_amount
     cdef SIZE_t* n_classes
     cdef SIZE_t sum_stride
-
+    cdef DTYPE_t* cost_total
+    cdef DTYPE_t* cost_left
+    cdef DTYPE_t* cost_right
+    
 cdef class RegressionCriterion(Criterion):
     """Abstract regression criterion."""
 

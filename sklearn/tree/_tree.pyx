@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # cython: cdivision=True
 # cython: boundscheck=False
 # cython: wraparound=False
@@ -251,7 +252,10 @@ cdef class DepthFirstTreeBuilder(TreeBuilder):
 
                 # Store value for all nodes, to facilitate tree/model
                 # inspection and interpretation
-                splitter.node_value(tree.value + node_id * tree.value_stride)
+                #splitter.node_value(tree.value + node_id * tree.value_stride)
+                
+                ##Store misclassification cost for all nodes.
+                splitter.node_cost(tree.value + node_id * tree.value_stride)
 
                 if not is_leaf:
                     # Push right child on stack
@@ -450,7 +454,7 @@ cdef class BestFirstTreeBuilder(TreeBuilder):
             impurity = splitter.node_impurity()
 
         n_node_samples = end - start
-        is_leaf = (depth > self.max_depth or
+        is_leaf = (depth >= self.max_depth or
                    n_node_samples < self.min_samples_split or
                    n_node_samples < 2 * self.min_samples_leaf or
                    weighted_n_node_samples < 2 * self.min_weight_leaf or
@@ -524,7 +528,7 @@ cdef class Tree:
         great as `node_count`.
 
     max_depth : int
-        The maximal depth of the tree.
+        The depth of the tree, i.e. the maximum depth of its leaves.
 
     children_left : array of int, shape [node_count]
         children_left[i] holds the node id of the left child of node i.
@@ -573,6 +577,12 @@ cdef class Tree:
     property children_right:
         def __get__(self):
             return self._get_node_ndarray()['right_child'][:self.node_count]
+
+    property n_leaves:
+        def __get__(self):
+            return np.sum(np.logical_and(
+                self.children_left == -1,
+                self.children_right == -1))
 
     property feature:
         def __get__(self):

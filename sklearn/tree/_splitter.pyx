@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # cython: cdivision=True
 # cython: boundscheck=False
 # cython: wraparound=False
@@ -95,6 +96,8 @@ cdef class Splitter:
         self.y = NULL
         self.y_stride = 0
         self.sample_weight = NULL
+        
+        self.lim_amount=NULL             ##self.lim_amount用以存储limit_Bal特征
 
         self.max_features = max_features
         self.min_samples_leaf = min_samples_leaf
@@ -143,6 +146,8 @@ cdef class Splitter:
         """
 
         self.rand_r_state = self.random_state.randint(0, RAND_R_MAX)
+        ##新增X_array_amount
+        cdef np.ndarray X_array_amount = X[:,0]
         cdef SIZE_t n_samples = X.shape[0]
 
         # Create a new array which will be used to store nonzero
@@ -183,6 +188,8 @@ cdef class Splitter:
         self.y_stride = <SIZE_t> y.strides[0] / <SIZE_t> y.itemsize
 
         self.sample_weight = sample_weight
+        
+        self.lim_amount=<DTYPE_t*> X_array_amount.data    #lim_amount为存储LIMIT_BAL特征向量的指针
         return 0
 
     cdef int node_reset(self, SIZE_t start, SIZE_t end,
@@ -205,7 +212,8 @@ cdef class Splitter:
         self.start = start
         self.end = end
 
-        self.criterion.init(self.y,
+        self.criterion.init(self.lim_amount               ##修改
+                            self.y,
                             self.y_stride,
                             self.sample_weight,
                             self.weighted_n_samples,
@@ -232,6 +240,12 @@ cdef class Splitter:
         """Copy the value of node samples[start:end] into dest."""
 
         self.criterion.node_value(dest)
+    
+    ##新增方法node_cost()
+    cdef void node_cost(self, double* dest0) nogil:
+        """Copy the cost of node samples[start:end] into dest0."""
+
+        self.criterion.node_cost(dest0)
 
     cdef double node_impurity(self) nogil:
         """Return the impurity of the current node."""
@@ -1654,3 +1668,4 @@ cdef class RandomSparseSplitter(BaseSparseSplitter):
         split[0] = best
         n_constant_features[0] = n_total_constants
         return 0
+
