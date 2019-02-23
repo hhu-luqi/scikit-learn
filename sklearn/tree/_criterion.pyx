@@ -799,7 +799,7 @@ cdef class Cost_entropy(ClassificationCriterion):
         cdef double cost_entropy = 0.0
         cdef double count_k
         #alpha为将本是normal（n）样本错误分类为fraud（p）的奖赏系数
-        cdef double alpha = 0.7
+        cdef double alpha = 10
         cdef SIZE_t k
         cdef SIZE_t c
         
@@ -851,7 +851,7 @@ cdef class Cost_entropy(ClassificationCriterion):
         cdef double entropy_left = 0.0
         cdef double entropy_right = 0.0
         #alpha为将本是normal（n）样本错误分类为fraud（p）的奖赏系数
-        cdef double alpha = 0.7
+        cdef double alpha = 10
         cdef double count_k
         cdef SIZE_t k
         cdef SIZE_t c
