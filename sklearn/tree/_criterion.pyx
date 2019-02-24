@@ -185,8 +185,10 @@ cdef class Criterion:
         cdef double impurity_right
         self.children_impurity(&impurity_left, &impurity_right)
 
-        return (- self.weighted_n_right * impurity_right
-                - self.weighted_n_left * impurity_left)
+        #return (- self.weighted_n_right * impurity_right
+        #        - self.weighted_n_left * impurity_left)
+        ##计算误分类损失，认为没有必要加上左右结点权重
+        return (- impurity_right - impurity_left)
 
     cdef double impurity_improvement(self, double impurity) nogil:
         """Compute the improvement in impurity
@@ -215,12 +217,15 @@ cdef class Criterion:
         cdef double impurity_right
 
         self.children_impurity(&impurity_left, &impurity_right)
-
+        '''
         return ((self.weighted_n_node_samples / self.weighted_n_samples) *
                 (impurity - (self.weighted_n_right / 
                              self.weighted_n_node_samples * impurity_right)
                           - (self.weighted_n_left / 
                              self.weighted_n_node_samples * impurity_left)))
+        '''
+        ##计算误分类损失，认为没有必要加上左右结点权重
+        return (impurity - impurity_right - impurity_left)
 
 
 cdef class ClassificationCriterion(Criterion):

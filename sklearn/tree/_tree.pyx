@@ -1082,14 +1082,20 @@ cdef class Tree:
                     # ... and node.right_child != _TREE_LEAF:
                     left = &nodes[node.left_child]
                     right = &nodes[node.right_child]
-
+                    '''
                     importance_data[node.feature] += (
                         node.weighted_n_node_samples * node.impurity -
                         left.weighted_n_node_samples * left.impurity -
                         right.weighted_n_node_samples * right.impurity)
+                    '''
+                    ##因为是计算误分类金额成本，觉得无需样本权重
+                    importance_data[node.feature] += (
+                            node.impurity - left.impurity - right.impurity)
                 node += 1
 
-        importances /= nodes[0].weighted_n_node_samples
+        #importances /= nodes[0].weighted_n_node_samples
+        ##计算cost_entropy,对应改为除以nodes[0].impurity
+        importances /= nodes[0].impurity
 
         if normalize:
             normalizer = np.sum(importances)

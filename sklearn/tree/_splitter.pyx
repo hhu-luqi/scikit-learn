@@ -96,14 +96,14 @@ cdef class Splitter:
         self.y = NULL
         self.y_stride = 0
         self.sample_weight = NULL
-        
-        self.lim_amount=NULL             ##self.lim_amount用以存储limit_Bal特征
 
         self.max_features = max_features
         self.min_samples_leaf = min_samples_leaf
         self.min_weight_leaf = min_weight_leaf
         self.random_state = random_state
         self.presort = presort
+        
+        self.lim_amount = NULL
 
     def __dealloc__(self):
         """Destructor."""
@@ -146,8 +146,6 @@ cdef class Splitter:
         """
 
         self.rand_r_state = self.random_state.randint(0, RAND_R_MAX)
-        ##新增X_array_amount
-        cdef np.ndarray X_array_amount = X[:,0]
         cdef SIZE_t n_samples = X.shape[0]
 
         # Create a new array which will be used to store nonzero
@@ -189,7 +187,7 @@ cdef class Splitter:
 
         self.sample_weight = sample_weight
         
-        self.lim_amount=<DTYPE_t*> X_array_amount.data    #lim_amount为存储LIMIT_BAL特征向量的指针
+
         return 0
 
     cdef int node_reset(self, SIZE_t start, SIZE_t end,
@@ -297,11 +295,18 @@ cdef class BaseDenseSplitter(Splitter):
 
         # Initialize X
         cdef np.ndarray X_ndarray = X
+        #lim_amount为存储LIMIT_BAL特征向量的指针
+        cdef SIZE_t i
+        cdef DTYPE_t* lim_amount= safe_realloc(&self.lim_amount, <SIZE_t> X.shape[0])
 
         self.X = <DTYPE_t*> X_ndarray.data
         self.X_sample_stride = <SIZE_t> X.strides[0] / <SIZE_t> X.itemsize
-        self.X_feature_stride = <SIZE_t> X.strides[1] / <SIZE_t> X.itemsize
-
+        self.X_feature_stride = <SIZE_t> X.strides[1] / <SIZE_t> X.itemsize  
+        
+        for i in range(X.shape[0]):
+            ##不能直接用X_ndarray赋值，因为这样会造成self.lim_amount仍旧是Python对象
+            lim_amount[i] = self.X[self.X_sample_stride * i]
+        
         if self.presort == 1:
             self.X_idx_sorted = X_idx_sorted
             self.X_idx_sorted_ptr = <INT32_t*> self.X_idx_sorted.data
