@@ -297,7 +297,7 @@ cdef class BaseDenseSplitter(Splitter):
         cdef np.ndarray X_ndarray = X
         #lim_amount为存储LIMIT_BAL特征向量的指针
         cdef SIZE_t i
-        cdef DTYPE_t* lim_amount= safe_realloc(&self.lim_amount, <SIZE_t> X.shape[0])
+        cdef DOUBLE_t* lim_amount= safe_realloc(&self.lim_amount, <SIZE_t> X.shape[0])
 
         self.X = <DTYPE_t*> X_ndarray.data
         self.X_sample_stride = <SIZE_t> X.strides[0] / <SIZE_t> X.itemsize
@@ -305,7 +305,7 @@ cdef class BaseDenseSplitter(Splitter):
         
         for i in range(X.shape[0]):
             ##不能直接用X_ndarray赋值，因为这样会造成self.lim_amount仍旧是Python对象
-            lim_amount[i] = self.X[self.X_sample_stride * i]
+            lim_amount[i] = <DOUBLE_t> self.X[self.X_sample_stride * i]
         
         if self.presort == 1:
             self.X_idx_sorted = X_idx_sorted

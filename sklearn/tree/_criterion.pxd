@@ -49,12 +49,17 @@ cdef class Criterion:
                                     # where k is output index.
     cdef double* sum_left           # Same as above, but for the left side of the split
     cdef double* sum_right          # same as above, but for the right side of the split
+    
+    # Calculate the usable amount limited of each class for each node (binary classification)
+    cdef double* cost_total
+    cdef double* cost_left
+    cdef double* cost_right
 
     # The criterion object is maintained such that left and right collected
     # statistics correspond to samples[start:pos] and samples[pos:end].
 
     # Methods
-    cdef int init(self, DTYPE_t* lim_amount, DOUBLE_t* y, SIZE_t y_stride, DOUBLE_t* sample_weight,
+    cdef int init(self, DOUBLE_t* lim_amount, DOUBLE_t* y, SIZE_t y_stride, DOUBLE_t* sample_weight,
                   double weighted_n_samples, SIZE_t* samples, SIZE_t start,
                   SIZE_t end) nogil except -1
     cdef int reset(self) nogil except -1
@@ -71,12 +76,10 @@ cdef class Criterion:
 
 cdef class ClassificationCriterion(Criterion):
     """Abstract criterion for classification."""
-    cdef DTYPE_t* lim_amount
+    cdef DOUBLE_t* lim_amount
     cdef SIZE_t* n_classes
     cdef SIZE_t sum_stride
-    cdef DTYPE_t* cost_total
-    cdef DTYPE_t* cost_left
-    cdef DTYPE_t* cost_right
+    
     
 cdef class RegressionCriterion(Criterion):
     """Abstract regression criterion."""
