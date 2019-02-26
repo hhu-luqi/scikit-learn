@@ -109,9 +109,9 @@ class BaseDecisionTree(six.with_metaclass(ABCMeta, BaseEstimator)):
         self.class_weight = class_weight
         self.presort = presort
 
-    def fit(self, X, y, sample_weight=None, check_input=True,
+    def fit(self, X, y, alpha=1, sample_weight=None, check_input=True,
             X_idx_sorted=None):
-
+            ##added alpha, see above
         random_state = check_random_state(self.random_state)
         if check_input:
             X = check_array(X, dtype=DTYPE, accept_sparse="csc")
@@ -343,7 +343,8 @@ class BaseDecisionTree(six.with_metaclass(ABCMeta, BaseEstimator)):
                                                 min_samples_leaf,
                                                 min_weight_leaf,
                                                 random_state,
-                                                self.presort)
+                                                self.presort, 
+                                                alpha)
 
         self.tree_ = Tree(self.n_features_, self.n_classes_, self.n_outputs_)
 
@@ -354,7 +355,7 @@ class BaseDecisionTree(six.with_metaclass(ABCMeta, BaseEstimator)):
                                             min_weight_leaf,
                                             max_depth,
                                             self.min_impurity_decrease,
-                                            min_impurity_split)
+                                            min_impurity_split)    ##added alpha
         else:
             builder = BestFirstTreeBuilder(splitter, min_samples_split,
                                            min_samples_leaf,
@@ -759,7 +760,7 @@ class DecisionTreeClassifier(BaseDecisionTree, ClassifierMixin):
             min_impurity_split=min_impurity_split,
             presort=presort)
 
-    def fit(self, X, y, sample_weight=None, check_input=True,
+    def fit(self, X, y, alpha=1, sample_weight=None, check_input=True,
             X_idx_sorted=None):
         """Build a decision tree classifier from the training set (X, y).
 
@@ -796,7 +797,7 @@ class DecisionTreeClassifier(BaseDecisionTree, ClassifierMixin):
         """
 
         super(DecisionTreeClassifier, self).fit(
-            X, y,
+            X, y, alpha=alpha,
             sample_weight=sample_weight,
             check_input=check_input,
             X_idx_sorted=X_idx_sorted)

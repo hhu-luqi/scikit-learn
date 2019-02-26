@@ -49,6 +49,7 @@ cdef class Criterion:
         free(self.cost_total)
         free(self.cost_right)
         free(self.cost_left)
+        free(self.n_node_cost)
 
     def __getstate__(self):
         return {}
@@ -56,7 +57,7 @@ cdef class Criterion:
     def __setstate__(self, d):
         pass
 
-    cdef int init(self, DOUBLE_t* lim_amount, DOUBLE_t* y, SIZE_t y_stride, DOUBLE_t* sample_weight,
+    cdef int init(self, double alpha, DOUBLE_t* lim_amount, DOUBLE_t* y, SIZE_t y_stride, DOUBLE_t* sample_weight,
                   double weighted_n_samples, SIZE_t* samples, SIZE_t start,
                   SIZE_t end) nogil except -1:
         """Placeholder for a method which will initialize the criterion.
@@ -256,6 +257,7 @@ cdef class ClassificationCriterion(Criterion):
         self.cost_total = NULL
         self.cost_right = NULL
         self.cost_left = NULL
+        self.n_node_cost = NULL         ##为何定要赋初值
 
         self.samples = NULL
         self.start = 0
@@ -299,7 +301,8 @@ cdef class ClassificationCriterion(Criterion):
         self.cost_total = <double*> calloc(n_elements, sizeof(double))
         self.cost_left = <double*> calloc(n_elements, sizeof(double))
         self.cost_right = <double*> calloc(n_elements, sizeof(double))
-
+        self.n_node_cost = <double*> calloc(n_elements, sizeof(double))
+        
         if (self.sum_total == NULL or
                 self.sum_left == NULL or
                 self.sum_right == NULL):
@@ -307,7 +310,8 @@ cdef class ClassificationCriterion(Criterion):
             
         if (self.cost_total == NULL or
                 self.cost_left == NULL or
-                self.cost_right == NULL):
+                self.cost_right == NULL or
+                self.n_node_cost == NULL):
             raise MemoryError()
             
     def __dealloc__(self):
@@ -319,8 +323,8 @@ cdef class ClassificationCriterion(Criterion):
                 (self.n_outputs,
                  sizet_ptr_to_ndarray(self.n_classes, self.n_outputs)),
                 self.__getstate__())
-
-    cdef int init(self, DOUBLE_t* lim_amount, DOUBLE_t* y, SIZE_t y_stride,
+    ##更新节点信息
+    cdef int init(self, double alpha, DOUBLE_t* lim_amount, DOUBLE_t* y, SIZE_t y_stride,
                   DOUBLE_t* sample_weight, double weighted_n_samples,
                   SIZE_t* samples, SIZE_t start, SIZE_t end) nogil except -1:
         """Initialize the criterion at node samples[start:end] and
@@ -331,6 +335,8 @@ cdef class ClassificationCriterion(Criterion):
 
         Parameters
         ----------
+        (added)alpha : control c_p penalty(c_p * alpha), alpha is smaller 
+            as more fraud samples are predicted.
         (added)lim_amount : array-like, dtype=DOUBLE_t
                     The amount of given credit for calculating the misclasssification cost of samples which are fraud in fact
         y : array-like, dtype=DOUBLE_t
@@ -349,6 +355,7 @@ cdef class ClassificationCriterion(Criterion):
         end : SIZE_t
             The last sample to use in the mask
         """
+        self.alpha = alpha
         self.lim_amount = lim_amount                  ##added
         self.y = y
         self.y_stride = y_stride
@@ -363,6 +370,7 @@ cdef class ClassificationCriterion(Criterion):
         cdef SIZE_t* n_classes = self.n_classes
         cdef double* sum_total = self.sum_total
         cdef double* cost_total = self.cost_total
+        cdef double* n_node_cost = self.n_node_cost
 
         cdef SIZE_t i
         cdef SIZE_t p
@@ -380,7 +388,9 @@ cdef class ClassificationCriterion(Criterion):
             例如sum_total[1*sum_stride+2]存储的是第二个输出的第3类样本的权重之和。
             """
             ##使cost_total中的值初始化为0
-            memset(cost_total + offset, 0, n_classes[k] * sizeof(double)) 
+            memset(cost_total + offset, 0, n_classes[k] * sizeof(double))
+            ##每次splitter.node_reset都会将sum_total, cost_total, n_node_cost清0
+            memset(n_node_cost + offset, 0, n_classes[k] * sizeof(double))
             offset += self.sum_stride
 
         for p in range(start, end):
@@ -399,7 +409,10 @@ cdef class ClassificationCriterion(Criterion):
                 cost_total[c] += lim_amount[i]
 
             self.weighted_n_node_samples += w
-
+            
+        ##利用新节点的cost_total计算n_node_cost值
+        self.node_impurity()
+        
         # Reset to pos=start
         self.reset()
         return 0
@@ -598,15 +611,13 @@ cdef class ClassificationCriterion(Criterion):
             The memory address which we will save the node cost into.
         """
 
-        cdef double* cost_total = self.cost_total
+        cdef double* n_node_cost = self.n_node_cost
         cdef SIZE_t* n_classes = self.n_classes
         cdef SIZE_t k
 
         for k in range(self.n_outputs):
-            memcpy(dest0, cost_total, n_classes[k] * sizeof(double))
-            dest0 += self.sum_stride
-            cost_total += self.sum_stride
-
+            memcpy(dest0, n_node_cost, n_classes[k] * sizeof(double))
+        
 cdef class Entropy(ClassificationCriterion):
     r"""Cross Entropy impurity criterion.
 
@@ -805,12 +816,13 @@ cdef class Cost_entropy(ClassificationCriterion):
         cdef SIZE_t* n_classes = self.n_classes
         cdef double* sum_total = self.sum_total
         cdef double* cost_total = self.cost_total
+        cdef double* n_node_cost = self.n_node_cost
         cdef double c_n = 0.0
         cdef double c_p = 0.0
         cdef double cost_entropy = 0.0
         cdef double count_k
         #alpha为将本是normal（n）样本错误分类为fraud（p）的奖赏系数
-        cdef double alpha = 1.0
+        cdef double alpha = self.alpha
         cdef SIZE_t k
         cdef SIZE_t c
         
@@ -822,8 +834,11 @@ cdef class Cost_entropy(ClassificationCriterion):
                     count_k /= self.weighted_n_node_samples
                     if c:
                         c_n = -log(1-count_k) * cost_total[c]
+                        n_node_cost[c] = c_n
                     else:
                         c_p = -log(1-count_k) * cost_total[c] * alpha
+                        ##经memset()设置为0后，只能通过+=的方式赋值？查看memset()含义
+                        n_node_cost[c] = c_p
             if c_n >= c_p:
                 cost_entropy = c_p
             else:
@@ -862,7 +877,7 @@ cdef class Cost_entropy(ClassificationCriterion):
         cdef double entropy_left = 0.0
         cdef double entropy_right = 0.0
         #alpha为将本是normal（n）样本错误分类为fraud（p）的奖赏系数
-        cdef double alpha = 1.0
+        cdef double alpha = self.alpha
         cdef double count_k
         cdef SIZE_t k
         cdef SIZE_t c
@@ -964,7 +979,7 @@ cdef class RegressionCriterion(Criterion):
     def __reduce__(self):
         return (type(self), (self.n_outputs, self.n_samples), self.__getstate__())
 
-    cdef int init(self, DOUBLE_t* lim_amount, DOUBLE_t* y, SIZE_t y_stride, DOUBLE_t* sample_weight,
+    cdef int init(self, double alpha, DOUBLE_t* lim_amount, DOUBLE_t* y, SIZE_t y_stride, DOUBLE_t* sample_weight,
                   double weighted_n_samples, SIZE_t* samples, SIZE_t start,
                   SIZE_t end) nogil except -1:
         """Initialize the criterion at node samples[start:end] and
@@ -1257,7 +1272,7 @@ cdef class MAE(RegressionCriterion):
             self.left_child[k] = WeightedMedianCalculator(n_samples)
             self.right_child[k] = WeightedMedianCalculator(n_samples)
 
-    cdef int init(self, DOUBLE_t* lim_amount, DOUBLE_t* y, SIZE_t y_stride, DOUBLE_t* sample_weight,
+    cdef int init(self, double alpha, DOUBLE_t* lim_amount, DOUBLE_t* y, SIZE_t y_stride, DOUBLE_t* sample_weight,
                   double weighted_n_samples, SIZE_t* samples, SIZE_t start,
                   SIZE_t end) nogil except -1:
         """Initialize the criterion at node samples[start:end] and

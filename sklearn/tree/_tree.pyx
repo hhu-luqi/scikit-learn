@@ -218,13 +218,14 @@ cdef class DepthFirstTreeBuilder(TreeBuilder):
                 n_constant_features = stack_record.n_constant_features
 
                 n_node_samples = end - start
+                ##n_node_cost置0，此处会调用_criterion.init()，并得到新节点的n_node_cost
                 splitter.node_reset(start, end, &weighted_n_node_samples)
 
                 is_leaf = (depth >= max_depth or
                            n_node_samples < min_samples_split or
                            n_node_samples < 2 * min_samples_leaf or
                            weighted_n_node_samples < 2 * min_weight_leaf)
-
+                ##此处只会调用一次，计算得到根节点impurity
                 if first:
                     impurity = splitter.node_impurity()
                     first = 0

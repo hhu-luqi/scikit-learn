@@ -65,6 +65,7 @@ cdef class Splitter:
     cdef SIZE_t y_stride
     cdef DOUBLE_t* sample_weight
     cdef DOUBLE_t* lim_amount             #存储特征LIMIT_BAL用以计算misclassification cost
+    cdef double alpha
     
 
     # The samples vector `samples` is maintained by the Splitter object such

@@ -61,7 +61,7 @@ cdef class Splitter:
 
     def __cinit__(self, Criterion criterion, SIZE_t max_features,
                   SIZE_t min_samples_leaf, double min_weight_leaf,
-                  object random_state, bint presort):
+                  object random_state, bint presort, double alpha):
         """
         Parameters
         ----------
@@ -104,6 +104,7 @@ cdef class Splitter:
         self.presort = presort
         
         self.lim_amount = NULL
+        self.alpha = alpha
 
     def __dealloc__(self):
         """Destructor."""
@@ -186,8 +187,7 @@ cdef class Splitter:
         self.y_stride = <SIZE_t> y.strides[0] / <SIZE_t> y.itemsize
 
         self.sample_weight = sample_weight
-        
-
+    
         return 0
 
     cdef int node_reset(self, SIZE_t start, SIZE_t end,
@@ -210,7 +210,8 @@ cdef class Splitter:
         self.start = start
         self.end = end
 
-        self.criterion.init(self.lim_amount,               ##修改
+        self.criterion.init(self.alpha,
+                            self.lim_amount,               ##修改
                             self.y,
                             self.y_stride,
                             self.sample_weight,
@@ -264,7 +265,7 @@ cdef class BaseDenseSplitter(Splitter):
 
     def __cinit__(self, Criterion criterion, SIZE_t max_features,
                   SIZE_t min_samples_leaf, double min_weight_leaf,
-                  object random_state, bint presort):
+                  object random_state, bint presort, double alpha):
 
         self.X = NULL
         self.X_sample_stride = 0
@@ -273,6 +274,7 @@ cdef class BaseDenseSplitter(Splitter):
         self.X_idx_sorted_stride = 0
         self.sample_mask = NULL
         self.presort = presort
+        self.alpha = alpha
 
     def __dealloc__(self):
         """Destructor."""
@@ -295,8 +297,8 @@ cdef class BaseDenseSplitter(Splitter):
 
         # Initialize X
         cdef np.ndarray X_ndarray = X
-        #lim_amount为存储LIMIT_BAL特征向量的指针
         cdef SIZE_t i
+        #lim_amount为存储LIMIT_BAL特征向量的指针
         cdef DOUBLE_t* lim_amount= safe_realloc(&self.lim_amount, <SIZE_t> X.shape[0])
 
         self.X = <DTYPE_t*> X_ndarray.data
@@ -900,7 +902,7 @@ cdef class BaseSparseSplitter(Splitter):
 
     def __cinit__(self, Criterion criterion, SIZE_t max_features,
                   SIZE_t min_samples_leaf, double min_weight_leaf,
-                  object random_state, bint presort):
+                  object random_state, bint presort, double alpha):
         # Parent __cinit__ is automatically called
 
         self.X_data = NULL

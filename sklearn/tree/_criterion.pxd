@@ -54,12 +54,16 @@ cdef class Criterion:
     cdef double* cost_total
     cdef double* cost_left
     cdef double* cost_right
+    ##存放每个节点的误分类损失
+    cdef double* n_node_cost    
+    #control c_p (c_p * alpha), alpha is smaller as more fraud samples are predicted.
+    cdef double alpha
 
     # The criterion object is maintained such that left and right collected
     # statistics correspond to samples[start:pos] and samples[pos:end].
 
     # Methods
-    cdef int init(self, DOUBLE_t* lim_amount, DOUBLE_t* y, SIZE_t y_stride, DOUBLE_t* sample_weight,
+    cdef int init(self, double alpha, DOUBLE_t* lim_amount, DOUBLE_t* y, SIZE_t y_stride, DOUBLE_t* sample_weight,
                   double weighted_n_samples, SIZE_t* samples, SIZE_t start,
                   SIZE_t end) nogil except -1
     cdef int reset(self) nogil except -1
